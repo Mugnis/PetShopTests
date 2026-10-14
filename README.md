@@ -39,10 +39,10 @@
 go-pet-shop/
 ├── cmd/ # Точки входа (app — сервер, migrator — миграции)
 ├── config/ # Конфигурация (yaml/json)
-├── internal/ # Бизнес-логика, хендлеры, работа с БД
+├── internal/ # Хендлеры, работа с БД, конфиг, логгер
+│   └── models/ # Доменные модели и DTO
 ├── migrations/ # SQL-файлы миграций
-├── models/ # Доменные модели и DTO
-├── .env # Переменные окружения (не хранится в git)
+├── .env # Переменные окружения (не хранится в git, шаблон — .env.example)
 ├── Taskfile.yaml # Скрипты для работы с проектом
 ├── go.mod # Модуль Go
 └── README.md # Документация
@@ -56,21 +56,23 @@ go-pet-shop/
    `git clone https://github.com/pavloging/go-pet-shop.git`
    `cd go-pet-shop`
 
-2. Настроить окружение.
-Создать файл .env и указать строку подключения к БД:
-`DATABASE_URL=postgres://user:password@localhost:5432/petshop?sslmode=disable`
+2. Настроить окружение: скопировать `.env.example` в `.env` и поправить логин, пароль и имя базы.
+`cp .env.example .env`
 
-3. Применить миграции:
+3. Поднять PostgreSQL и применить миграции:
+`docker compose up -d postgres`
 `task migrate`
 
-4. Запустить сервер:
-`go run cmd/app/main.go`
+4. Запустить сервер (конфиг `config/local.yaml`, другой выбирается через `APP_ENV`):
+`go run ./cmd/app`
 
 5. После этого API будет доступно по адресу:
-`http://localhost:8080`
+`http://localhost:8080`, проверка — `GET /health`.
+
+Всё сразу в контейнерах: `docker compose up -d --build` (приложение берёт `config/dev.yaml`).
 
 ## 🧩 Версии проекта
-Проект развивается по шагам, каждая часть закреплена в отдельной ветке:
+В репозитории одна ветка `main`, это стартовая точка. Версии ты делаешь сам в своей копии проекта, каждую в отдельной ветке, по заданию модуля:
 
 v1 — CRUD для товаров и пользователей.
 v2 — Добавлены заказы и позиции заказа.
