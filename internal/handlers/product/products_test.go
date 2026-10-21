@@ -1,9 +1,9 @@
 package product
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
+	"go-pet-shop/internal/handlers/product/mocks"
 	"go-pet-shop/internal/models"
 	"log/slog"
 	"net/http"
@@ -12,25 +12,24 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+	"github.com/stretchr/testify/mock"
 )
 
 // Get Product - Ready
 func TestGetAllProducts_Success(t *testing.T) {
 	// Мокаем storage — он вернёт один продукт.
-	mock := &ProductsMock{
-		GetAllProductsFunc: func(ctx context.Context) ([]models.Product, error) {
-			return []models.Product{
-				{ID: 1, Name: "Dog Food"},
-			}, nil
-		},
-	}
+	ProductGetterMock := mocks.NewProducts(t)
+
+	ProductGetterMock.On("GetAllProducts", mock.Anything).
+		Return([]models.Product{{ID: 1, Name: "Dog Food"}}, nil).
+		Once()
 
 	// Создаем HTTP-запрос GET /products
 	req := httptest.NewRequest(http.MethodGet, "/products", nil)
 	w := httptest.NewRecorder()
 
 	// Создаем хендлер с мок-хранилищем
-	handler := New(slog.Default(), mock)
+	handler := New(slog.Default(), ProductGetterMock)
 
 	// Вызываем метод GetAllProducts, который является http.HandlerFunc
 	handler.GetAllProducts(w, req)
@@ -42,17 +41,17 @@ func TestGetAllProducts_Success(t *testing.T) {
 }
 func TestGetAllProducts_Error(t *testing.T) {
 	// Мокаем storage — он будет возвращать ошибку
-	mock := &ProductsMock{
-		GetAllProductsFunc: func(ctx context.Context) ([]models.Product, error) {
-			return nil, errors.New("DB error")
-		},
-	}
+	ProductGetterMock := mocks.NewProducts(t)
+
+	ProductGetterMock.On("GetAllProducts", mock.Anything).
+		Return(nil, errors.New("DB Error")).
+		Once()
 
 	// Создаем запрос
 	req := httptest.NewRequest(http.MethodGet, "/products", nil)
 	w := httptest.NewRecorder()
 
-	handler := New(slog.Default(), mock)
+	handler := New(slog.Default(), ProductGetterMock)
 	handler.GetAllProducts(w, req)
 
 	// Ожидаем HTTP 500
@@ -67,18 +66,23 @@ func TestGetAllProducts_Error(t *testing.T) {
 
 func TestCreateProduct_Success(t *testing.T) {
 	// TODO: Написать Unit-тест для создания продукта (200 OK)
-	mock := &ProductsMock{
-		CreateProductFunc: func(ctx context.Context, product models.Product) (int, error) {
-			return 1, nil
-		},
-	}
+	ProductCreatingMock := mocks.NewProducts(t)
+
+	product := &models.Product{}
+	product.Name = "Корм для собак"
+	product.Price = 499.99
+	product.Stock = 10
+
+	ProductCreatingMock.On("CreateProduct", mock.Anything, *product).
+		Return(1, nil).
+		Once()
 
 	requestBody := `{"name": "Корм для собак", "price": 499.99, "stock": 10}`
 
 	req := httptest.NewRequest(http.MethodPost, "/products", strings.NewReader(requestBody))
 	w := httptest.NewRecorder()
 
-	handler := New(slog.Default(), mock)
+	handler := New(slog.Default(), ProductCreatingMock)
 	handler.CreateProduct(w, req)
 
 	// Ожидаем HTTP 200
@@ -102,14 +106,14 @@ func TestCreateProduct_Success(t *testing.T) {
 
 func TestCreateProduct_BadRequest(t *testing.T) {
 	// TODO: Написать Unit-тест для создания продукта с невалидным JSON (400 Bad Request)
-	mock := &ProductsMock{}
+	ProductCreatingMock := mocks.NewProducts(t)
 
 	requestBody := `"na: "Корля соак", "price 499.99, "sto"0}`
 
 	req := httptest.NewRequest(http.MethodPost, "/products", strings.NewReader(requestBody))
 	w := httptest.NewRecorder()
 
-	handler := New(slog.Default(), mock)
+	handler := New(slog.Default(), ProductCreatingMock)
 	handler.CreateProduct(w, req)
 
 	// Ожидаем HTTP 400
@@ -129,18 +133,23 @@ func TestCreateProduct_BadRequest(t *testing.T) {
 
 func TestCreateProduct_Fail(t *testing.T) {
 	// TODO: Написать Unit-тест для создания продукта при ошибке сервиса (500 Internal Server Error)
-	mock := &ProductsMock{
-		CreateProductFunc: func(ctx context.Context, product models.Product) (int, error) {
-			return 0, errors.New("DB Error")
-		},
-	}
+	ProductCreatingMock := mocks.NewProducts(t)
+
+	product := &models.Product{}
+	product.Name = "Корм для собак"
+	product.Price = 499.99
+	product.Stock = 10
+
+	ProductCreatingMock.On("CreateProduct", mock.Anything, *product).
+		Return(0, errors.New("DB Error")).
+		Once()
 
 	requestBody := `{"name": "Корм для собак", "price": 499.99, "stock": 10}`
 
 	req := httptest.NewRequest(http.MethodPost, "/products", strings.NewReader(requestBody))
 	w := httptest.NewRecorder()
 
-	handler := New(slog.Default(), mock)
+	handler := New(slog.Default(), ProductCreatingMock)
 	handler.CreateProduct(w, req)
 
 	// Ожидаем HTTP 500
@@ -164,11 +173,17 @@ func TestCreateProduct_Fail(t *testing.T) {
 
 func TestUpdateProduct_Success(t *testing.T) {
 	// TODO: Написать Unit-тест для обновления продукта (200 OK)
-	mock := &ProductsMock{
-		UpdateProductFunc: func(ctx context.Context, product models.Product) error {
-			return nil
-		},
-	}
+	ProductCreatingMock := mocks.NewProducts(t)
+
+	product := &models.Product{}
+	product.ID = 1
+	product.Name = "Корм для собак"
+	product.Price = 499.99
+	product.Stock = 10
+
+	ProductCreatingMock.On("UpdateProduct", mock.Anything, *product).
+		Return(nil).
+		Once()
 
 	requestBody := `{"id": 10, "name": "Корм для собак", "price": 499.99, "stock": 10}`
 
@@ -176,7 +191,7 @@ func TestUpdateProduct_Success(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	router := chi.NewRouter()
-	handler := New(slog.Default(), mock)
+	handler := New(slog.Default(), ProductCreatingMock)
 
 	router.Post("/products/{id}", handler.UpdateProduct)
 
@@ -203,7 +218,7 @@ func TestUpdateProduct_Success(t *testing.T) {
 
 func TestUpdateProduct_BadRequest(t *testing.T) {
 	// TODO: Написать Unit-тест для обновления продукта с невалидным JSON (400 Bad Request)
-	mock := &ProductsMock{}
+	ProductCreatingMock := mocks.NewProducts(t)
 
 	requestBody := `d": 10, "name": "Корм для собак", "ice": 499.99, "stoc: 10}`
 
@@ -211,7 +226,7 @@ func TestUpdateProduct_BadRequest(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	router := chi.NewRouter()
-	handler := New(slog.Default(), mock)
+	handler := New(slog.Default(), ProductCreatingMock)
 
 	router.Post("/products/{id}", handler.UpdateProduct)
 
@@ -234,11 +249,17 @@ func TestUpdateProduct_BadRequest(t *testing.T) {
 
 func TestUpdateProduct_Fail(t *testing.T) {
 	// TODO: Написать Unit-тест для обновления продукта при ошибке сервиса (500 Internal Server Error)
-	mock := &ProductsMock{
-		UpdateProductFunc: func(ctx context.Context, product models.Product) error {
-			return errors.New("DB Error")
-		},
-	}
+	ProductCreatingMock := mocks.NewProducts(t)
+
+	product := &models.Product{}
+	product.ID = 1
+	product.Name = "Корм для собак"
+	product.Price = 499.99
+	product.Stock = 10
+
+	ProductCreatingMock.On("UpdateProduct", mock.Anything, *product).
+		Return(errors.New("DB Error")).
+		Once()
 
 	requestBody := `{"id": 10, "name": "Корм для собак", "price": 499.99, "stock": 10}`
 
@@ -246,7 +267,7 @@ func TestUpdateProduct_Fail(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	router := chi.NewRouter()
-	handler := New(slog.Default(), mock)
+	handler := New(slog.Default(), ProductCreatingMock)
 
 	router.Post("/products/{id}", handler.UpdateProduct)
 
@@ -273,17 +294,17 @@ func TestUpdateProduct_Fail(t *testing.T) {
 
 func TestDeleteProduct_Success(t *testing.T) {
 	// TODO: Написать Unit-тест для удаления продукта (200 OK)
-	mock := &ProductsMock{
-		DeleteProductFunc: func(ctx context.Context, id int) error {
-			return nil
-		},
-	}
+	ProductDeleterMock := mocks.NewProducts(t)
+
+	ProductDeleterMock.On("DeleteProduct", mock.Anything, 1).
+		Return(nil).
+		Once()
 
 	req := httptest.NewRequest(http.MethodDelete, "/products/1", nil)
 	w := httptest.NewRecorder()
 
 	router := chi.NewRouter()
-	handler := New(slog.Default(), mock)
+	handler := New(slog.Default(), ProductDeleterMock)
 
 	router.Delete("/products/{id}", handler.DeleteProduct)
 
@@ -310,13 +331,13 @@ func TestDeleteProduct_Success(t *testing.T) {
 
 func TestDeleteProduct_BadRequest(t *testing.T) {
 	// TODO: Написать Unit-тест для удаления продукта с пустым id (400 Bad Request)
-	mock := &ProductsMock{}
+	ProductDeleterMock := mocks.NewProducts(t)
 
 	req := httptest.NewRequest(http.MethodDelete, "/products/", nil)
 	w := httptest.NewRecorder()
 
 	router := chi.NewRouter()
-	handler := New(slog.Default(), mock)
+	handler := New(slog.Default(), ProductDeleterMock)
 
 	router.Delete("/products/{id}", handler.DeleteProduct)
 	router.Delete("/products/", handler.DeleteProduct)
@@ -340,17 +361,17 @@ func TestDeleteProduct_BadRequest(t *testing.T) {
 
 func TestDeleteProduct_Fail(t *testing.T) {
 	// TODO: Написать Unit-тест для удаления продукта при ошибке сервиса (500 Internal Server Error)
-	mock := &ProductsMock{
-		DeleteProductFunc: func(ctx context.Context, id int) error {
-			return errors.New("DB Error")
-		},
-	}
+	ProductDeleterMock := mocks.NewProducts(t)
+
+	ProductDeleterMock.On("DeleteProduct", mock.Anything, 1).
+		Return(errors.New("DB Error")).
+		Once()
 
 	req := httptest.NewRequest(http.MethodDelete, "/products/1", nil)
 	w := httptest.NewRecorder()
 
 	router := chi.NewRouter()
-	handler := New(slog.Default(), mock)
+	handler := New(slog.Default(), ProductDeleterMock)
 
 	router.Delete("/products/{id}", handler.DeleteProduct)
 
